@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>
+        Microsoft Health API test
+    </title>
+    <script src="microsofthealth.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-beta1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/rangeslider.js/2.1.1/rangeslider.js"></script>
+    <script src="js/d3.min.js" charset="utf-8"></script>
+    <script>
+        var mshealth = new MicrosoftHealth({
+            clientId: "00000000481858A7",
+            scope: "mshealth.ReadProfile mshealth.ReadDevices mshealth.ReadActivityHistory mshealth.ReadActivityLocation",
+            redirectUri: window.location.toString()
+        });
+        mshealth.login();
+    </script>
+</head>
+<body>
+<input type="range" value="200" min="00" max="300" data-orientation="vertical">
+<br>
+<output></output>
+<div id="heart" class="graph">
+    <svg id="visualisation" width="1000" height="500"></svg>
+</div>
+    <div id="data"></div>
+    <script>
+        var data = [];
+        var $document = $(document);
+        var d = new Date(2016, 0, 28, 0, 0, 0, 0);
+        var dataToBeStreamed;
+        var index = 1;
+        var $r = $('input[type=range]');
+        var output = document.querySelectorAll('output')[0];
+        var value = $r[0].value;
+
+        output.innerHTML = $r[0].value;
+        $document.on('input', 'input[type="range"]', function(e) {
+            value = e.currentTarget.value;
+            output.innerHTML = e.currentTarget.value;
+        });
+
+        mshealth.getSummaries({
+            period:"hourly",
+            startTime: d.toISOString(),
+            endTime: (new Date()).toISOString()}).then(function(data) {
+                dataToBeStreamed = data;
+                draw();
+
+                setInterval(function(){
+                    if(dataToBeStreamed.summaries[index].heartRateSummary.peakHeartRate >= value){
+                        alert();
+                    }
+                    ++index;
+                    if(index >= dataToBeStreamed.summaries.length) {
+                        window.clearInterval(intervalId);
+                    }
+                    d3.selectAll("svg > *").remove();
+                    draw();
+                    ++index;
+                }, 3000);
+
+        });
+        ////////
+        function draw() {
+            var vis = d3.select("#visualisation"),
+                    WIDTH = 1000,
+                    HEIGHT = 500,
+                    MARGINS = {
+                        top: 20,
+                        right: 20,
+                        bottom: 20,
+                        left: 50
+                    },
+
+                    xScale = d3.scale.linear().range([MARGINS.left, (WIDTH - MARGINS.right)]).domain([0,100]),
+
+                    yScale = d3.scale.linear().range([HEIGHT - MARGINS.top, MARGINS.bottom]).domain([0,300]),
+
+                    xAxis = d3.svg.axis().scale(xScale),
+
+                    yAxis = d3.svg.axis().scale(yScale);
+
+            var svg = d3.select("#heart").append("svg");
+
+            vis.append("svg:g")
+                    .attr("transform", "translate(0," + (HEIGHT - MARGINS.bottom) + ")")
+                    .call(xAxis);
+
+            yAxis = d3.svg.axis()
+                    .scale(yScale)
+                    .orient("left");
+
+            vis.append("svg:g")
+                    .attr("transform", "translate(" + (MARGINS.left) + ",0)")
+                    .call(yAxis)
+                    .append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 13)
+                    .attr("text-anchor", "end")
+                    .text("Beats Per Minute");
+
+            var lineGen = d3.svg.line()
+                    .x(function(d) {
+                        console.log(d);
+                        return xScale(d.day);
+                    })
+                    .y(function(d) {
+                        return yScale(d.heartRate);
+                    });
+
+//            for(var i = 0; i < dataToBeStreamed.summaries.length;i++) {
+//                if(dataToBeStreamed.summaries[i].heartRateSummary.peakHeartRate != undefined){
+//                    data.push({heartRate: dataToBeStreamed.summaries[i].heartRateSummary.peakHeartRate, day:i});
+//                }
+//            }
+
+            data.push({heartRate: dataToBeStreamed.summaries[index].heartRateSummary.peakHeartRate, day:index});
+            vis.append('svg:path')
+                    .attr('d', lineGen(data))
+                    .attr('stroke', 'green')
+                    .attr('stroke-width', 2)
+                    .attr('fill', 'none');
+
+//            data.push({heartRate: dataToBeStreamed.summaries[index].heartRateSummary.peakHeartRate, day:index});
+
+            return data;
+        }
+
+
+
+
+
+
+
+
+
+
+
+/////////////////
+
+
+//        $(function() {
+//
+//            var $r = $('input[type=range]');
+//            var $min = $('input[name="min"]');
+//            var $max = $('input[name="max"]');
+//            var $step = $('input[name="step"]');
+//            var output = document.querySelectorAll('output')[0];
+//
+//            // set initial output value
+//            output.innerHTML = $r[0].value;
+//
+//            // update output value
+//            $document.on('input', 'input[type="range"]', function(e) {
+//                value = e.currentTarget.value;
+//                output.innerHTML = e.currentTarget.value;
+//            });
+//
+//            // Initialize
+////            $r.rangeslider({
+////                polyfill: false
+////            });
+//
+//            // Example functionality to demonstrate programmatic attribute changes
+//            $document.on('click', '#js-example-change-attributes', function(e) {
+//                var attributes = {
+//                    min: $min[0].value,
+//                    max: $max[0].value,
+//                    step: $step[0].value
+//                };
+//                $r.attr(attributes);
+//                $r.rangeslider('update', true);
+//            });
+//        });
+
+
+
+
+    </script>
+
+
+</body>
+
+</html>
